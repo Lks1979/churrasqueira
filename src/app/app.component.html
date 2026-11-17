@@ -1,0 +1,166 @@
+<main class="wrap">
+  <header>
+    <h1>🍖 Controle da Churrasqueira</h1>
+    <p class="sub">Agenda de locações e acompanhamento de pagamentos</p>
+  </header>
+
+  <section class="stats" aria-label="Resumo das reservas do mês">
+    <div class="stat">
+      Reservas no mês
+      <strong>{{ monthlyBookings.length }}</strong>
+    </div>
+    <div class="stat">
+      Total recebido no mês
+      <strong>{{ formatMoney(receivedTotal) }}</strong>
+    </div>
+    <div class="stat">
+      Saldo a receber no mês
+      <strong>{{ formatMoney(pendingTotal) }}</strong>
+    </div>
+  </section>
+
+  <div class="layout">
+    <section class="panel" aria-labelledby="calendar-title">
+      <div class="head">
+        <h2 id="calendar-title">Calendário</h2>
+        <div class="month-nav">
+          <button type="button" class="nav-button" aria-label="Mês anterior" (click)="changeMonth(-1)">
+            ◀
+          </button>
+          <span class="month-label">{{ monthLabel }}</span>
+          <button type="button" class="nav-button" aria-label="Próximo mês" (click)="changeMonth(1)">
+            ▶
+          </button>
+        </div>
+      </div>
+
+      <div class="week" aria-hidden="true">
+        @for (weekday of weekdays; track weekday) {
+          <span>{{ weekday }}</span>
+        }
+      </div>
+
+      <div class="days">
+        @for (day of calendarDays; track $index) {
+          @if (day === null) {
+            <div class="day blank" aria-hidden="true"></div>
+          } @else {
+            <button
+              type="button"
+              class="day"
+              [class.free]="!bookingForDay(day)"
+              [class.booked]="bookingForDay(day)"
+              [class.selected]="formDate === dayDate(day)"
+              [attr.aria-label]="'Dia ' + day + (bookingForDay(day) ? ', reservado' : ', disponível')"
+              [title]="bookingForDay(day)?.name ? 'Reservado: ' + bookingForDay(day)?.name : 'Disponível'"
+              (click)="selectDate(day)"
+            >
+              {{ day }}
+            </button>
+          }
+        }
+      </div>
+
+      <p class="legend">
+        <span class="dot"></span> Disponível
+        <span class="dot red"></span> Reservado
+      </p>
+
+      <h3>Reservas deste mês</h3>
+      @if (monthlyBookings.length === 0) {
+        <p class="empty">Nenhuma reserva neste mês.</p>
+      } @else {
+        @for (booking of monthlyBookings; track booking.date) {
+          <article class="item">
+            <div class="row">
+              <strong>{{ formatDisplayDate(booking.date) }} — {{ booking.name }}</strong>
+              <span
+                class="pill"
+                [class.paid]="booking.payment === 100"
+                [class.none]="booking.payment === 0"
+              >
+                {{ statusLabel(booking) }}
+              </span>
+            </div>
+            <p class="muted">
+              Total: {{ formatMoney(booking.value) }} · Pendente:
+              {{ formatMoney((booking.value * (100 - booking.payment)) / 100) }}
+            </p>
+            <button type="button" class="edit-button" (click)="selectDate(+booking.date.slice(-2))">
+              Editar
+            </button>
+          </article>
+        }
+      }
+    </section>
+
+    <section class="panel" aria-labelledby="form-title">
+      <h2 id="form-title">{{ editingDate ? 'Editar reserva' : 'Nova reserva' }}</h2>
+      <form (ngSubmit)="saveBooking($event)">
+        <label for="date">Data da locação</label>
+        <input id="date" name="date" type="date" required [(ngModel)]="formDate">
+
+        <label for="name">Nome do morador</label>
+        <input
+          id="name"
+          name="name"
+          maxlength="120"
+          required
+          placeholder="Nome completo"
+          [(ngModel)]="name"
+        >
+
+        <label for="phone">Telefone / WhatsApp</label>
+        <input
+          id="phone"
+          name="phone"
+          type="tel"
+          maxlength="30"
+          placeholder="(11) 99999-9999"
+          [(ngModel)]="phone"
+        >
+
+        <label for="value">Valor total da locação (R$)</label>
+        <input
+          id="value"
+          name="value"
+          type="number"
+          min="0.01"
+          step="0.01"
+          required
+          placeholder="Ex.: 200,00"
+          [(ngModel)]="value"
+        >
+
+        <label for="payment">Pagamento recebido</label>
+        <select id="payment" name="payment" [(ngModel)]="payment">
+          <option value="0">Não pagou</option>
+          <option value="50">Pagou 50%</option>
+          <option value="100">Pagou 100%</option>
+        </select>
+
+        <p class="muted balance">
+          Recebido: {{ formatMoney(paymentReceived) }} |
+          Falta pagar: {{ formatMoney(paymentPending) }}
+        </p>
+
+        <div class="actions">
+          <button type="submit">Salvar reserva</button>
+          <button type="button" class="secondary" (click)="clearForm()">Limpar</button>
+          @if (editingDate) {
+            <button type="button" class="danger" (click)="deleteBooking()">Excluir reserva</button>
+          }
+        </div>
+
+        <p class="notice" [class.success]="noticeType === 'success'" role="alert" aria-live="polite">
+          {{ notice }}
+        </p>
+      </form>
+
+      <p class="muted storage-note">
+        Os dados ficam salvos somente neste navegador. Para uso compartilhado entre celulares e
+        computadores, será necessária uma versão com banco de dados e login.
+      </p>
+    </section>
+  </div>
+</main>
